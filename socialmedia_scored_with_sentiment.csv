@@ -1,0 +1,40 @@
+User ID,Username,Platform,Post ID,Post Text,Sentiment
+101,@adventureSeeker,Instagram,82036,"""Experiencing the thrill of a lifetime! #AdventureTime""",Positive
+215,@foodieTraveler,Twitter,12463,"""Indulging in local delicacies! #FoodieTravels""",Positive
+303,@wellnessJourney,Facebook,45982,"""Finding peace and balance in nature!",Positive
+404,@fitnessFreak,Instagram,16572,"""Pushing my limits in the gym!",Neutral
+521,@foodExplorer,Twitter,75589,"""Discovering unique flavors around the world!",Neutral
+609,@wanderlustSoul,Facebook,24680,"""Embracing the beauty of nature!",Positive
+712,@techGeek,Twitter,36901,"""Exploring the latest tech innovations!",Positive
+825,@petWhisperer,Instagram,98342,"""Connecting with furry friends!",Positive
+926,@bookwormLife,Facebook,57481,"""Diving into the magical world of books!",Neutral
+104,@foodPhotog,Instagram,20589,"""Capturing delicious moments!",Neutral
+209,@artisticSoul,Twitter,73249,"""Expressing creativity through art!",Positive
+305,@musicAddict,Spotify,60912,"""Discovering hidden gems in music!",Positive
+427,@petRescuer,Instagram,14236,"""Giving furry friends a second chance!",Positive
+598,@natureLover,Instagram,95641,"""Finding serenity in the beauty of nature!",Positive
+712,@techEnthusiast,Twitter,47560,"""Geeking out with the latest gadgets!",Positive
+825,@filmCritic,YouTube,65241,"""Reviewing the latest blockbuster!",Positive
+943,@fashionIcon,Instagram,30420,"""Setting trends with style!",Positive
+158,@gamerGeek,Twitch,74859,"""Leveling up in the gaming world!",Neutral
+101,@artLife,Instagram,84263,"""Unleashing creativity on canvas!",Positive
+215,@travelBug,Twitter,32840,"""Exploring the world one city at a time!",Positive
+303,@fitnessGuru,Facebook,92634,"""Empowering lives through fitness!",Positive
+405,@petLover,Instagram,12543,"""Spreading love, one paw at a time!",Neutral
+518,@techWhiz,Twitter,36780,"""Decoding the secrets of technology!",Neutral
+625,@bookLover,Goodreads,75928,"""Escaping reality through the pages!",Neutral
+711,@foodJunkie,Instagram,69274,"""Savoring every delectable bite!",Neutral
+802,@musicMaestro,Spotify,48720,"""Harmonizing hearts with melodies!",Positive
+903,@adrenalineJunkie,Instagram,27549,"""Chasing thrills and adventure!",Neutral
+102,@fashionista,Twitter,81934,"""Dressing up is an art!",Positive
+210,@globeTrotter,Facebook,67482,"""Discovering the world's wonders! ?? #Wanderlust""",Positive
+311,@foodExplorer,Instagram,59243,"""Culinary delights from around the globe!",Neutral
+402,@fitAndFab,Twitter,84380,"""Determined to stay fit and fabulous!",Neutral
+522,@natureExplorer,Facebook,27684,"""Immersed in nature's beauty!",Positive
+618,@petAdvocate,Instagram,94728,"""Giving a voice to the voiceless!",Neutral
+725,@gameChanger,Twitch,12462,"""Redefining the gaming experience!",Negative
+817,@fashionGuru,YouTube,23879,"""Unlocking the secrets of style!",Positive
+940,@bookNerd,Goodreads,82714,"""Getting lost in the magic of books!",Neutral
+108,@fitnessFreak,Twitter,95128,"""Pushing boundaries for a fitter tomorrow!",Neutral
+201,@foodieJourney,Instagram,80347,"""Embarking on a culinary journey!",Neutral
+305,@techGeek,Facebook,20983,"""Unraveling the marvels of technology!",Positive
