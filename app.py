@@ -43,6 +43,7 @@ def map_to_three_classes(label: str) -> str:
     if lab in ["neutral"]:
         return "Neutral"
 
+    # Sets of keywords for broader matching
     positive_keywords = {
         "positive",
         "happy",
@@ -121,12 +122,15 @@ def map_to_three_classes(label: str) -> str:
     if lab in negative_keywords:
         return "Negative"
 
+    # Fallback: check if any keyword is a substring of the label
+    # This handles cases like "feeling hopeful" or "very angry"
     if any(pk in lab for pk in positive_keywords):
         return "Positive"
     if any(nk in lab for nk in negative_keywords):
         return "Negative"
 
     # Treat all other labels as Neutral
+    # This is a catch-all for ambiguous or unmapped labels
     return "Neutral"
 
 
@@ -137,14 +141,22 @@ HTML_TAG_PATTERN = re.compile(r"<.*?>")
 
 
 def clean_text(text: str) -> str:
+    """
+    Cleans raw text data by removing URLs, HTML tags, mentions, hashtags,
+    and special characters. Also converts text to lowercase.
+    """
     if not isinstance(text, str):
         return ""
+    # Convert to lowercase
     text = text.lower()
+    # Remove URLs, HTML tags, mentions, and hashtags
     text = URL_PATTERN.sub(" ", text)
     text = HTML_TAG_PATTERN.sub(" ", text)
     text = MENTION_PATTERN.sub(" ", text)
     text = HASHTAG_PATTERN.sub(" ", text)
+    # Remove all characters that are not letters, numbers, basic punctuation, or whitespace
     text = re.sub(r"[^a-z0-9\s.,!?']", " ", text)
+    # Replace multiple whitespace characters with a single space and strip leading/trailing whitespace
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -154,7 +166,7 @@ def clean_text(text: str) -> str:
 # =========================================================
 
 
-@st.cache_data
+@st.cache_data  # Streamlit decorator to cache the output of this function
 def load_and_prepare_data(csv_path: str) -> pd.DataFrame:
     """
     Load labeled dataset (e.g., sentimentdataset.csv) used for training.
@@ -164,6 +176,7 @@ def load_and_prepare_data(csv_path: str) -> pd.DataFrame:
         raise FileNotFoundError(f"CSV not found at {csv_path}")
 
     df = pd.read_csv(csv_path)
+    # df.info()
 
     if "Text" not in df.columns or "Sentiment" not in df.columns:
         raise ValueError(
@@ -171,15 +184,18 @@ def load_and_prepare_data(csv_path: str) -> pd.DataFrame:
             "Please adjust the code or your CSV."
         )
 
+    # Clean up the 'Sentiment' column and apply the 3-class mapping
     df["Sentiment_clean"] = df["Sentiment"].astype(str).str.strip()
     df["Sentiment_3class"] = df["Sentiment_clean"].apply(map_to_three_classes)
+    # Remove rows where mapping resulted in None (e.g., from empty sentiment labels)
     df = df[df["Sentiment_3class"].notna()].copy()
 
+    # Apply text cleaning to the 'Text' column
     df["clean_text"] = df["Text"].astype(str).apply(clean_text)
     return df
 
 
-@st.cache_data
+@st.cache_data  # Cache the loaded social media data
 def load_socialmedia_data(csv_path: str) -> pd.DataFrame:
     """
     Load socialmedia.csv with columns:
@@ -191,6 +207,7 @@ def load_socialmedia_data(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
 
     required_cols = ["User ID", "Username", "Platform", "Post ID", "Post Text"]
+    # Validate that the required columns exist in the DataFrame
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
@@ -208,6 +225,7 @@ def train_test_split_data(
     test_size: float = 0.2,
     random_state: int = 42,
 ) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Splits the DataFrame into training and testing sets."""
     X = df[text_col]
     y = df[label_col]
     return train_test_split(
@@ -215,6 +233,8 @@ def train_test_split_data(
         y,
         test_size=test_size,
         random_state=random_state,
+        # stratify=y ensures that the class distribution in the train and test sets
+        # is the same as the original distribution. This is important for imbalanced datasets.
         stratify=y,
     )
 
@@ -225,6 +245,10 @@ def train_test_split_data(
 
 
 def build_logreg_pipeline() -> Pipeline:
+    """
+    Builds a scikit-learn pipeline for a Logistic Regression model.
+    The pipeline consists of a TF-IDF vectorizer and the classifier.
+    """
     return Pipeline(
         steps=[
             (
@@ -236,7 +260,9 @@ def build_logreg_pipeline() -> Pipeline:
             (
                 "clf",
                 LogisticRegression(
+                    # Increase max_iter to ensure convergence for this dataset
                     max_iter=1000,
+                    # 'balanced' adjusts weights inversely proportional to class frequencies
                     class_weight="balanced",
                 ),
             ),
@@ -245,6 +271,10 @@ def build_logreg_pipeline() -> Pipeline:
 
 
 def build_nb_pipeline() -> Pipeline:
+    """
+    Builds a scikit-learn pipeline for a Multinomial Naive Bayes model.
+    The pipeline consists of a TF-IDF vectorizer and the classifier.
+    """
     return Pipeline(
         steps=[
             (
@@ -266,16 +296,25 @@ def evaluate_model(
     y_test,
     model_name: str = "Model",
 ):
+    """
+    Fits a model, evaluates it using cross-validation and on a test set,
+    and returns a dictionary of performance metrics.
+    """
+    # Train the model on the entire training set
     model.fit(X_train, y_train)
 
+    # Perform 5-fold cross-validation on the training data for a more robust accuracy estimate
     cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring="accuracy")
+    # Make predictions on the unseen test data
     y_pred = model.predict(X_test)
 
+    # Calculate performance metrics
     acc = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred)
     cm = confusion_matrix(y_test, y_pred)
     labels = sorted(y_test.unique())
 
+    # Return all results in a dictionary
     return {
         "model": model,
         "cv_scores": cv_scores,
@@ -292,8 +331,10 @@ def evaluate_model(
 
 
 def main():
+    # Configure the Streamlit page
     st.set_page_config(page_title="Social Media Sentiment Dashboard", layout="wide")
 
+    # Main title and introductory markdown
     st.title("📊 Social Media Sentiment Analysis Dashboard")
     st.markdown(
         """
@@ -307,7 +348,7 @@ This app implements the pipeline from your project plan:
         """
     )
 
-    # ------------- Sidebar controls -------------
+    # =================== Sidebar controls ===================
     st.sidebar.header("⚙️ Settings")
 
     csv_path = st.sidebar.text_input(
@@ -338,12 +379,14 @@ This app implements the pipeline from your project plan:
 
     show_raw_data = st.sidebar.checkbox("Show raw training data preview", value=True)
 
-    # For session state (trained models & data)
+    # Initialize session state to store data and models across Streamlit reruns.
+    # This prevents data from being reloaded or models from being retrained on every interaction.
     if "trained_models" not in st.session_state:
         st.session_state["trained_models"] = {}
 
-    # ------------- Section 1: Load training data -------------
+    # =================== Section 1: Load training data ===================
     st.header("1. Training Data Loading & Exploration")
+    st.markdown("---")
 
     data_load_col1, data_load_col2 = st.columns([2, 1])
 
@@ -351,12 +394,14 @@ This app implements the pipeline from your project plan:
         if st.button("Load & Prepare Training Data"):
             try:
                 df = load_and_prepare_data(csv_path)
+                # Store the loaded and prepared DataFrame in the session state
                 st.session_state["df"] = df
                 st.success(f"Loaded {len(df)} rows from `{csv_path}`.")
             except Exception as e:
                 st.error(f"Error loading training data: {e}")
 
     with data_load_col2:
+        # Display metrics if data has been loaded
         if "df" in st.session_state:
             df = st.session_state["df"]
             st.metric("Rows", len(df))
@@ -364,6 +409,7 @@ This app implements the pipeline from your project plan:
 
     if "df" in st.session_state:
         df = st.session_state["df"]
+        # df.info()
 
         if show_raw_data:
             st.subheader("Sample of Prepared Training Data")
@@ -387,19 +433,23 @@ This app implements the pipeline from your project plan:
     else:
         st.info("Load training data to continue.")
 
-    # ------------- Section 2: Model training -------------
+    # =================== Section 2: Model training ===================
     st.header("2. Train Models")
+    st.markdown("---")
 
     if "df" in st.session_state:
         df = st.session_state["df"]
 
         col_train_1, col_train_2 = st.columns([2, 1])
         with col_train_1:
+            # This button triggers the model training process
             if st.button("Train selected models"):
+                # Split data into train/test sets using the slider value from the sidebar
                 X_train, X_test, y_train, y_test = train_test_split_data(
                     df,
                     test_size=test_size,
                 )
+                # Store the split data in session state for later use
                 st.session_state["split"] = (X_train, X_test, y_train, y_test)
 
                 trained_models = {}
@@ -430,10 +480,12 @@ This app implements the pipeline from your project plan:
                         )
                         trained_models["Naive Bayes"] = result_nb
 
+                # Store the dictionary of trained models and their results in session state
                 st.session_state["trained_models"] = trained_models
                 st.success("Training completed.")
 
         with col_train_2:
+            # Display train/test split sizes if the data has been split
             if "split" in st.session_state:
                 X_train, X_test, y_train, y_test = st.session_state["split"]
                 st.metric("Train size", len(X_train))
@@ -443,6 +495,7 @@ This app implements the pipeline from your project plan:
         if st.session_state["trained_models"]:
             st.subheader("Model Performance")
 
+            # Iterate through the trained models and display their performance metrics
             for name, res in st.session_state["trained_models"].items():
                 st.markdown(f"### {name}")
                 col1, col2 = st.columns([1, 3])
@@ -460,6 +513,7 @@ This app implements the pipeline from your project plan:
                 cm = res["confusion_matrix"]
                 labels = res["labels"]
 
+                # Use matplotlib to create and display a confusion matrix plot
                 fig, ax = plt.subplots()
                 im = ax.imshow(cm, interpolation="nearest")
                 ax.set_title(f"{name} - Confusion Matrix")
@@ -470,21 +524,22 @@ This app implements the pipeline from your project plan:
                 ax.set_ylabel("True label")
                 ax.set_xlabel("Predicted label")
 
-                # text annotations
+                # Add text annotations for the counts in each cell of the matrix
                 for i in range(cm.shape[0]):
                     for j in range(cm.shape[1]):
                         ax.text(j, i, cm[i, j], ha="center", va="center")
 
                 st.pyplot(fig)
 
-    # ------------- Section 3: Live & Batch Sentiment -------------
+    # =================== Section 3: Live & Batch Sentiment ===================
     st.header("3. Live & Batch Sentiment Prediction")
+    st.markdown("---")
 
     left_col, right_col = st.columns(2)
 
-    # ---- Left: Live prediction on user input ----
+    # ---------- Left Column: Live prediction on user input ----------
     with left_col:
-        st.subheader("3.1 Live Sentiment Prediction (manual input)")
+        st.subheader("3.1 Live Prediction")
 
         if st.session_state["trained_models"]:
             model_name_for_inference = st.selectbox(
@@ -504,6 +559,7 @@ This app implements the pipeline from your project plan:
                 if not user_text.strip():
                     st.warning("Please enter some text.")
                 else:
+                    # Retrieve the selected model from session state
                     model = st.session_state["trained_models"][
                         model_name_for_inference
                     ]["model"]
@@ -516,14 +572,15 @@ This app implements the pipeline from your project plan:
         else:
             st.info("Train at least one model in Section 2 to enable live prediction.")
 
-    # ---- Right: socialmedia.csv preview + batch scoring ----
+    # ---------- Right Column: socialmedia.csv preview + batch scoring ----------
     with right_col:
-        st.subheader("3.2 socialmedia.csv Preview & Batch Scoring")
+        st.subheader("3.2 Batch Scoring on `socialmedia.csv`")
 
         # Load socialmedia.csv
         if st.button("Load socialmedia.csv"):
             try:
                 sm_df = load_socialmedia_data(socialmedia_path)
+                # Store the loaded DataFrame in session state
                 st.session_state["sm_df"] = sm_df
                 st.success(f"Loaded {len(sm_df)} rows from `{socialmedia_path}`.")
             except Exception as e:
@@ -532,7 +589,7 @@ This app implements the pipeline from your project plan:
         if "sm_df" in st.session_state:
             sm_df = st.session_state["sm_df"]
 
-            st.markdown("**Preview of socialmedia.csv**")
+            st.markdown("**Preview of `socialmedia.csv`**")
             st.dataframe(sm_df.head(20))
 
             if st.session_state["trained_models"]:
@@ -543,6 +600,7 @@ This app implements the pipeline from your project plan:
                 )
 
                 if st.button("Run sentiment on all Post Text and generate file"):
+                    # Retrieve the selected model for batch processing
                     model = st.session_state["trained_models"][batch_model_name][
                         "model"
                     ]
@@ -552,6 +610,7 @@ This app implements the pipeline from your project plan:
                     sm_df_clean["clean_text"] = (
                         sm_df_clean["Post Text"].astype(str).apply(clean_text)
                     )
+                    # Predict sentiment for all cleaned texts
                     preds = model.predict(sm_df_clean["clean_text"])
 
                     # Prepare result DataFrame with requested columns
@@ -575,7 +634,7 @@ This app implements the pipeline from your project plan:
                         st.markdown("**Preview of scored data:**")
                         st.dataframe(result_df.head(20))
 
-                        # Create downloadable CSV
+                        # Provide a download button for the scored CSV file
                         csv_bytes = result_df.to_csv(index=False).encode("utf-8")
                         st.download_button(
                             label="Download scored socialmedia CSV",
